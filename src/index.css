@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 12pt !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .printable-document,
+  .printable-document * {
+    visibility: visible;
+  }
+
+  .printable-document {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 16px !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+  }
+
+  /* Hide navigation, headers, sidebars, buttons, AI blocks, and interactive modals when printing */
+  header,
+  aside,
+  nav,
+  .no-print,
+  .print\:hidden,
+  button,
+  #close-mobile-sidebar-btn,
+  #open-mobile-sidebar-btn {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  .print-page-break {
+    page-break-inside: avoid;
+  }
+}

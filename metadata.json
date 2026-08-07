@@ -1,0 +1,6 @@
+{
+  "name": "Ecclesia PRO",
+  "description": "Sistema de Gestão Financeira e Tesouraria para Igrejas Presbiterianas com Painel de Transparência",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
