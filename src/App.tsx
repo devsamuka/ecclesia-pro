@@ -53,6 +53,7 @@ import {
   MonthlyBudget,
   SynodeGoal,
 } from './types';
+import { supabase } from './lib/supabase';
 
 const INITIAL_USERS: SystemUser[] = [
   {
@@ -115,9 +116,68 @@ export default function App() {
     };
   }, []);
   const [activeRole, setActiveRole] = useState<UserRole>('Tesoureiro');
+  const [treasurerName, setTreasurerName] = useState<string>('Carlos Santos');
+  const [userEmail, setUserEmail] = useState<string>('tesouraria@ipb.org.br');
+  const [userAvatarUrl, setUserAvatarUrl] = useState<string | undefined>(undefined);
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
+  // Monitor Supabase Active Session and Auth State Changes (F5 Persistence)
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('name, role, email')
+            .eq('id', session.user.id)
+            .single();
+
+          setUserEmail(session.user.email || 'tesouraria@ipb.org.br');
+          if (profile) {
+            if (profile.name) setTreasurerName(profile.name);
+            if (profile.role) setActiveRole(profile.role as UserRole);
+          }
+          setIsAuthenticated(true);
+        }
+      } catch (err) {
+        console.error('Erro ao verificar sessão ativa no Supabase:', err);
+      }
+    };
+
+    checkSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('name, role, email')
+          .eq('id', session.user.id)
+          .single();
+
+        setUserEmail(session.user.email || '');
+        if (profile) {
+          if (profile.name) setTreasurerName(profile.name);
+          if (profile.role) setActiveRole(profile.role as UserRole);
+        }
+        setIsAuthenticated(true);
+      } else if (event === 'SIGNED_OUT') {
+        setIsAuthenticated(false);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('Erro ao encerrar sessão no Supabase:', err);
+    } finally {
+      setIsAuthenticated(false);
+    }
   };
   const [churchName, setChurchName] = useState<string>(INITIAL_CHURCH_NAME);
   const [churchCnpj, setChurchCnpj] = useState<string>(INITIAL_CHURCH_CNPJ);
@@ -125,10 +185,6 @@ export default function App() {
   const [synodName, setSynodName] = useState<string>(INITIAL_SYNOD_NAME);
   const [percentualPresbiterio, setPercentualPresbiterio] = useState<number>(10);
   const [percentualSinodo, setPercentualSinodo] = useState<number>(10);
-  const [treasurerName, setTreasurerName] = useState<string>('Carlos Santos');
-  const [userEmail, setUserEmail] = useState<string>('tesouraria@ipb.org.br');
-  const [userAvatarUrl, setUserAvatarUrl] = useState<string | undefined>(undefined);
-
   const handleUpdateProfile = (updated: { name: string; role: UserRole; avatarUrl?: string }) => {
     setTreasurerName(updated.name);
     setActiveRole(updated.role);

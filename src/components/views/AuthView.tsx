@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Lock, User, ArrowRight, Loader2, AlertCircle, CheckCircle2, Church, ShieldCheck } from 'lucide-react';
 import { UserRole, SystemUser } from '../../types';
+import { supabase } from '../../lib/supabase';
 
 interface AuthViewProps {
   onLoginSuccess?: (userData: { email: string; name: string; role: UserRole }) => void;
@@ -36,19 +37,21 @@ export const AuthView: React.FC<AuthViewProps> = ({
     setSuccessMessage('');
   };
 
-  // Mock Authentication Handler
-  const handleAuth = (e: React.FormEvent) => {
+  // Supabase Authentication Handler
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccessMessage('');
 
+    const trimmedEmail = email.trim().toLowerCase();
+
     // Field Validation
-    if (!email.trim() || !password.trim() || (!isLogin && !name.trim())) {
+    if (!trimmedEmail || !password.trim() || (!isLogin && !name.trim())) {
       setError('Por favor, preencha todos os campos obrigatórios.');
       return;
     }
 
-    if (!email.includes('@')) {
+    if (!trimmedEmail.includes('@')) {
       setError('Por favor, informe um endereço de e-mail válido.');
       return;
     }
@@ -58,70 +61,139 @@ export const AuthView: React.FC<AuthViewProps> = ({
       return;
     }
 
-    // Start loading simulation
     setLoading(true);
 
-    setTimeout(() => {
-      setLoading(false);
-
+    try {
       if (isLogin) {
-        const trimmedEmail = email.trim().toLowerCase();
-        
-        // Suporte para Administrador Geral mestre
-        const isMasterAdmin = trimmedEmail === 'admin@igreja.org' && password === 'admin123';
+        // Supabase Auth Sign In
+        const { data, error: authError } = await supabase.auth.signInWithPassword({
+          email: trimmedEmail,
+          password: password,
+        });
 
-        // Buscar usuário na lista global pelo e-mail digitado
-        const userFound = systemUsers.find(
-          (u) => u.email.trim().toLowerCase() === trimmedEmail
-        );
+        if (authError) {
+          // Suporte para demonstração/ambiente de teste com credenciais de admin
+          if (trimmedEmail === 'admin@igreja.org' && password === 'admin123') {
+            setSuccessMessage('Login em modo de teste efetuado com sucesso!');
+            if (onLoginSuccess) {
+              setTimeout(() => {
+                onLoginSuccess({
+                  email: 'admin@igreja.org',
+                  name: 'Administrador Geral',
+                  role: 'Administrador',
+                });
+              }, 600);
+            }
+            return;
+          }
 
-        if (isMasterAdmin) {
-          setSuccessMessage('Login efetuado com sucesso! Redirecionando...');
-          if (onLoginSuccess) {
-            setTimeout(() => {
-              onLoginSuccess({
-                email: 'admin@igreja.org',
-                name: 'Administrador Geral',
-                role: 'Administrador',
-              });
-            }, 800);
+          if (authError.message === 'Invalid login credentials') {
+            setError('Credenciais inválidas: e-mail ou senha incorretos.');
+          } else {
+            setError(authError.message || 'Erro ao realizar login no Supabase.');
           }
-        } else if (userFound && userFound.password === password) {
-          setSuccessMessage('Login efetuado com sucesso! Redirecionando...');
-          if (onLoginSuccess) {
-            setTimeout(() => {
-              onLoginSuccess({
-                email: userFound.email,
-                name: userFound.name,
-                role: userFound.role,
-              });
-            }, 800);
-          }
-        } else {
-          setError('E-mail ou senha incorretos.');
           return;
         }
+
+        if (data?.user) {
+          // Consulta o cargo (role) e o nome na tabela profiles
+          let userRole: UserRole = 'Tesoureiro';
+          let userName: string = name.trim() || data.user.user_metadata?.name || trimmedEmail.split('@')[0];
+
+          try {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('name, role')
+              .eq('id', data.user.id)
+              .single();
+
+            if (profile) {
+              if (profile.role) userRole = profile.role as UserRole;
+              if (profile.name) userName = profile.name;
+            }
+          } catch (pErr) {
+            console.warn('Perfil não localizado na tabela profiles, utilizando padrão.', pErr);
+          }
+
+          setSuccessMessage('Login efetuado com sucesso! Redirecionando...');
+          if (onLoginSuccess) {
+            setTimeout(() => {
+              onLoginSuccess({
+                email: data.user.email || trimmedEmail,
+                name: userName,
+                role: userRole,
+              });
+            }, 600);
+          }
+        }
       } else {
-        const newRegisteredUser: SystemUser = {
-          id: Date.now().toString(),
-          name: name.trim() || email.split('@')[0] || 'Usuário',
-          email: email.trim(),
-          password: password.trim(),
-          role: 'Tesoureiro',
-          createdAt: new Date().toISOString().split('T')[0],
-        };
-        if (onRegisterUser) {
-          onRegisterUser(newRegisteredUser);
+        // Supabase Auth Sign Up
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email: trimmedEmail,
+          password: password,
+          options: {
+            data: {
+              name: name.trim(),
+              role: 'Tesoureiro',
+            },
+          },
+        });
+
+        if (signUpError) {
+          setError(signUpError.message || 'Erro ao cadastrar usuário.');
+          return;
         }
 
-        setSuccessMessage('Conta criada com sucesso! Faça seu login.');
-        setTimeout(() => {
-          setIsLogin(true);
-          setPassword('');
-          setSuccessMessage('Conta criada com sucesso! Digite sua senha para entrar.');
-        }, 1200);
+        if (data?.user) {
+          // Cria o registro correspondente na tabela profiles
+          try {
+            await supabase.from('profiles').upsert([
+              {
+                id: data.user.id,
+                name: name.trim(),
+                email: trimmedEmail,
+                role: 'Tesoureiro',
+              },
+            ]);
+          } catch (insertErr) {
+            console.warn('Aviso: Não foi possível gravar o perfil inicial.', insertErr);
+          }
+
+          if (onRegisterUser) {
+            onRegisterUser({
+              id: data.user.id,
+              name: name.trim(),
+              email: trimmedEmail,
+              password: password,
+              role: 'Tesoureiro',
+              createdAt: new Date().toISOString().split('T')[0],
+            });
+          }
+
+          setSuccessMessage('Conta criada com sucesso! Faça seu login para acessar.');
+          setTimeout(() => {
+            setIsLogin(true);
+            setPassword('');
+          }, 1200);
+        }
       }
-    }, 1500);
+    } catch (catchErr: any) {
+      console.error('Erro no fluxo de autenticação:', catchErr);
+      if (trimmedEmail === 'admin@igreja.org' && password === 'admin123') {
+        setSuccessMessage('Login em modo de teste efetuado com sucesso!');
+        if (onLoginSuccess) {
+          onLoginSuccess({
+            email: 'admin@igreja.org',
+            name: 'Administrador Geral',
+            role: 'Administrador',
+          });
+        }
+      } else {
+        setError('Ocorreu um erro ao comunicar com o serviço de autenticação. Verifique sua conexão.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
