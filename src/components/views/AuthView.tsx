@@ -72,22 +72,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
         });
 
         if (authError) {
-          // Suporte para demonstração/ambiente de teste com credenciais de admin
-          if (trimmedEmail === 'admin@igreja.org' && password === 'admin123') {
-            setSuccessMessage('Login em modo de teste efetuado com sucesso!');
-            if (onLoginSuccess) {
-              setTimeout(() => {
-                onLoginSuccess({
-                  email: 'admin@igreja.org',
-                  name: 'Administrador Geral',
-                  role: 'Administrador',
-                });
-              }, 600);
-            }
-            return;
-          }
-
-          if (authError.message === 'Invalid login credentials') {
+              if (authError.message === 'Invalid login credentials') {
             setError('Credenciais inválidas: e-mail ou senha incorretos.');
           } else {
             setError(authError.message || 'Erro ao realizar login no Supabase.');
