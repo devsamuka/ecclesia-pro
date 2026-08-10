@@ -10,9 +10,11 @@ import {
   Pencil,
   Trash2,
   AlertTriangle,
+  Loader2,
 } from 'lucide-react';
 import { Transaction, ChurchAccount, UserRole } from '../../types';
 import { formatPeriodLabel, isDateInPeriod } from '../../utils/periodUtils';
+import { deleteTransactionFromSupabase } from '../../lib/transactionsService';
 
 interface TransactionsViewProps {
   transactions: Transaction[];
@@ -23,6 +25,7 @@ interface TransactionsViewProps {
   onOpenReceiptModal: (transaction: Transaction) => void;
   selectedPeriod: string;
   activeRole?: UserRole;
+  isLoading?: boolean;
 }
 
 export const TransactionsView: React.FC<TransactionsViewProps> = ({
@@ -34,12 +37,14 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   onOpenReceiptModal,
   selectedPeriod,
   activeRole = 'Tesoureiro',
+  isLoading = false,
 }) => {
   const canManageFinances = activeRole === 'Tesoureiro' || activeRole === 'Administrador';
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<'Todos' | 'Entrada' | 'Saída'>('Todos');
   const [accountFilter, setAccountFilter] = useState<string>('Todas');
   const [deletingTx, setDeletingTx] = useState<Transaction | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   const periodTransactions = transactions.filter((tx) =>
     isDateInPeriod(tx.date, selectedPeriod)
@@ -83,10 +88,14 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
     a.click();
   };
 
-  const handleConfirmDelete = () => {
-    if (deletingTx && onDeleteTransaction) {
+  const handleConfirmDelete = async () => {
+    if (!deletingTx) return;
+    setIsDeleting(true);
+    await deleteTransactionFromSupabase(deletingTx.id);
+    if (onDeleteTransaction) {
       onDeleteTransaction(deletingTx.id);
     }
+    setIsDeleting(false);
     setDeletingTx(null);
   };
 
@@ -432,14 +441,23 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
 
             <div className="flex gap-2 pt-2">
               <button
+                disabled={isDeleting}
                 onClick={handleConfirmDelete}
-                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg shadow-md transition-all cursor-pointer"
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-60 text-white font-bold rounded-lg shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                Excluir Lançamento
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Excluindo...</span>
+                  </>
+                ) : (
+                  <span>Excluir Lançamento</span>
+                )}
               </button>
               <button
+                disabled={isDeleting}
                 onClick={() => setDeletingTx(null)}
-                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg cursor-pointer"
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg cursor-pointer disabled:opacity-50"
               >
                 Cancelar
               </button>

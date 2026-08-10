@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, HeartHandshake, CheckCircle2 } from 'lucide-react';
+import { X, HeartHandshake, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
 import {
   Transaction,
   TransactionType,
@@ -8,6 +8,10 @@ import {
   PaymentMethod,
   Member,
 } from '../../types';
+import {
+  createTransactionInSupabase,
+  updateTransactionInSupabase,
+} from '../../lib/transactionsService';
 
 interface NewTransactionModalProps {
   isOpen: boolean;
@@ -53,7 +57,15 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
   const [destinationFund, setDestinationFund] = useState<string>('Caixa Geral');
   const [notes, setNotes] = useState<string>('');
 
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [successMessage, setSuccessMessage] = useState<string>('');
+
   useEffect(() => {
+    setErrorMessage('');
+    setSuccessMessage('');
+    setIsSubmitting(false);
+
     if (editingTransaction) {
       setType(editingTransaction.type);
       setCategory(editingTransaction.category);
@@ -81,16 +93,23 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage('');
+    setSuccessMessage('');
+
     const numAmount = parseFloat(amount.toString().replace(',', '.'));
-    if (isNaN(numAmount) || numAmount <= 0) return;
+    if (isNaN(numAmount) || numAmount <= 0) {
+      setErrorMessage('Por favor, informe um valor numérico válido para o lançamento.');
+      return;
+    }
 
     const trimmedMemberName = memberName.trim();
     const finalIsAnonymous = !trimmedMemberName;
 
-    const txToSave: Transaction = {
-      id: editingTransaction ? editingTransaction.id : `tx-${Date.now()}`,
+    setIsSubmitting(true);
+
+    const txPayload: Omit<Transaction, 'id'> = {
       type,
       category,
       description:
@@ -110,8 +129,43 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
       notes,
     };
 
-    onSave(txToSave);
-    onClose();
+    let resultTx: Transaction | null = null;
+    let error: any = null;
+
+    if (editingTransaction && editingTransaction.id) {
+      const res = await updateTransactionInSupabase(editingTransaction.id, txPayload);
+      resultTx = res.data;
+      error = res.error;
+    } else {
+      const res = await createTransactionInSupabase(txPayload);
+      resultTx = res.data;
+      error = res.error;
+    }
+
+    setIsSubmitting(false);
+
+    if (error) {
+      console.warn('Erro ao salvar lançamento no Supabase:', error);
+      // Salva em memória caso o Supabase não esteja provisionado ou ocorra erro RLS
+      const fallbackTx: Transaction = {
+        id: editingTransaction ? editingTransaction.id : `tx-${Date.now()}`,
+        ...txPayload,
+      };
+      onSave(fallbackTx);
+      setSuccessMessage('Lançamento registrado localmente!');
+      setTimeout(() => {
+        onClose();
+      }, 1000);
+      return;
+    }
+
+    if (resultTx) {
+      setSuccessMessage('Lançamento salvo no Supabase com sucesso!');
+      onSave(resultTx);
+      setTimeout(() => {
+        onClose();
+      }, 800);
+    }
   };
 
   return (
@@ -280,19 +334,45 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
             </div>
           </div>
 
+          {/* Feedback Banners */}
+          {errorMessage && (
+            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg flex items-center gap-2 text-xs font-semibold animate-in fade-in">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
+          {successMessage && (
+            <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg flex items-center gap-2 text-xs font-semibold animate-in fade-in">
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+              <span>{successMessage}</span>
+            </div>
+          )}
+
           {/* Buttons */}
           <div className="flex gap-2 pt-2">
             <button
               type="submit"
-              className="flex-1 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              disabled={isSubmitting}
+              className="flex-1 py-2.5 bg-teal-600 hover:bg-teal-700 disabled:opacity-60 text-white font-bold rounded-lg shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>{editingTransaction ? 'Salvar Alterações' : 'Salvar Lançamento'}</span>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Salvando no Supabase...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{editingTransaction ? 'Salvar Alterações' : 'Salvar Lançamento'}</span>
+                </>
+              )}
             </button>
             <button
               type="button"
+              disabled={isSubmitting}
               onClick={onClose}
-              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg cursor-pointer"
+              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg cursor-pointer disabled:opacity-50"
             >
               Cancelar
             </button>

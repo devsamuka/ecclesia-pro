@@ -54,6 +54,7 @@ import {
   SynodeGoal,
 } from './types';
 import { supabase } from './lib/supabase';
+import { fetchTransactionsFromSupabase } from './lib/transactionsService';
 
 const INITIAL_USERS: SystemUser[] = [
   {
@@ -211,10 +212,36 @@ export default function App() {
 
   // Domain Data States
   const [accounts, setAccounts] = useState<ChurchAccount[]>(INITIAL_ACCOUNTS);
-  const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isLoadingTransactions, setIsLoadingTransactions] = useState<boolean>(true);
   const [lastUpdated, setLastUpdated] = useState<string>(() =>
     getInitialLastUpdatedTimestamp(INITIAL_TRANSACTIONS)
   );
+
+  // Fetch real transactions from Supabase on mount and whenever authentication occurs
+  useEffect(() => {
+    let isMounted = true;
+    const loadRealTransactions = async () => {
+      setIsLoadingTransactions(true);
+      const { data, error } = await fetchTransactionsFromSupabase();
+      if (isMounted) {
+        if (!error && data) {
+          setTransactions(data);
+          setLastUpdated(formatCurrentDateTime(new Date()));
+        } else {
+          console.warn('Utilizando fallback inicial para dados de transação:', error);
+          setTransactions(INITIAL_TRANSACTIONS);
+        }
+        setIsLoadingTransactions(false);
+      }
+    };
+
+    loadRealTransactions();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
   const [upcomingBills, setUpcomingBills] = useState<UpcomingBill[]>(INITIAL_UPCOMING_BILLS);
   const [superiorPayments, setSuperiorPayments] = useState<SuperiorPayment[]>(INITIAL_SUPERIOR_PAYMENTS);
   const [members, setMembers] = useState<Member[]>(INITIAL_MEMBERS);
@@ -529,6 +556,7 @@ export default function App() {
               <TransactionsView
                 transactions={transactions}
                 accounts={accounts}
+                isLoading={isLoadingTransactions}
                 onOpenNewTransaction={() => {
                   setEditingTx(null);
                   setIsNewTxModalOpen(true);
