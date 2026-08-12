@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Settings,
   Church,
@@ -21,8 +21,12 @@ import {
   Key,
   Mail,
   User as UserIcon,
+  Loader2,
+  AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { UserRole, SystemUser } from '../../types';
+import { supabase } from '../../lib/supabase';
 
 interface SettingsViewProps {
   activeRole?: UserRole;
@@ -92,13 +96,58 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'Geral' | 'Categorias' | 'Permissoes' | 'Usuarios'>('Geral');
 
-  // Gestão de Usuários (Exclusivo Administrador)
+  // Gestão de Usuários (Exclusivo Administrador com Supabase)
+  const [users, setUsers] = useState<SystemUser[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState<boolean>(true);
+  const [usersError, setUsersError] = useState<string>('');
+  const [isSubmittingUser, setIsSubmittingUser] = useState<boolean>(false);
+
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<SystemUser | null>(null);
   const [userNameInput, setUserNameInput] = useState('');
   const [userEmailInput, setUserEmailInput] = useState('');
   const [userPasswordInput, setUserPasswordInput] = useState('');
   const [userRoleInput, setUserRoleInput] = useState<UserRole>('Tesoureiro');
+
+  const fetchUsers = async () => {
+    setIsLoadingUsers(true);
+    setUsersError('');
+    try {
+      const { data, error } = await supabase.from('profiles').select('*');
+      if (error) {
+        console.warn('Aviso ao buscar perfis do Supabase:', error.message || error);
+        setUsersError('Não foi possível carregar os usuários do Supabase.');
+        if (systemUsers && systemUsers.length > 0) {
+          setUsers(systemUsers);
+        }
+      } else if (data) {
+        const mapped: SystemUser[] = data.map((row: any) => ({
+          id: String(row.id),
+          name: row.name || row.email?.split('@')[0] || 'Usuário',
+          email: row.email || '',
+          role: (row.role as UserRole) || 'Tesoureiro',
+          createdAt: row.created_at
+            ? new Date(row.created_at).toISOString().split('T')[0]
+            : row.createdAt || undefined,
+        }));
+        setUsers(mapped);
+      }
+    } catch (err: any) {
+      console.error('Exceção ao carregar usuários:', err);
+      setUsersError('Erro de comunicação com o serviço de banco de dados.');
+      if (systemUsers && systemUsers.length > 0) {
+        setUsers(systemUsers);
+      }
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'Usuarios') {
+      fetchUsers();
+    }
+  }, [activeTab]);
 
   const handleOpenNewUser = () => {
     setEditingUser(null);
@@ -118,41 +167,78 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setIsUserModalOpen(true);
   };
 
-  const handleSaveUser = (e: React.FormEvent) => {
+  const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userNameInput.trim() || !userEmailInput.trim()) return;
 
-    if (editingUser) {
-      const updated: SystemUser = {
-        ...editingUser,
-        name: userNameInput.trim(),
-        email: userEmailInput.trim(),
-        role: userRoleInput,
-        password: userPasswordInput.trim() ? userPasswordInput.trim() : editingUser.password,
-      };
-      if (onEditUser) {
-        onEditUser(updated);
+    setIsSubmittingUser(true);
+    try {
+      if (editingUser) {
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            name: userNameInput.trim(),
+            email: userEmailInput.trim().toLowerCase(),
+            role: userRoleInput,
+          })
+          .eq('id', editingUser.id);
+
+        if (error) {
+          console.warn('Aviso ao atualizar perfil no Supabase:', error);
+        }
+
+        const updated: SystemUser = {
+          ...editingUser,
+          name: userNameInput.trim(),
+          email: userEmailInput.trim().toLowerCase(),
+          role: userRoleInput,
+        };
+        if (onEditUser) onEditUser(updated);
+      } else {
+        const newUserId = crypto.randomUUID ? crypto.randomUUID() : `usr-${Date.now()}`;
+        const { error } = await supabase.from('profiles').insert([
+          {
+            id: newUserId,
+            name: userNameInput.trim(),
+            email: userEmailInput.trim().toLowerCase(),
+            role: userRoleInput,
+          },
+        ]);
+
+        if (error) {
+          console.warn('Aviso ao inserir perfil no Supabase:', error);
+        }
+
+        const newUser: SystemUser = {
+          id: newUserId,
+          name: userNameInput.trim(),
+          email: userEmailInput.trim().toLowerCase(),
+          role: userRoleInput,
+          createdAt: new Date().toISOString().split('T')[0],
+        };
+        if (onAddUser) onAddUser(newUser);
       }
-    } else {
-      const newUser: SystemUser = {
-        id: Date.now().toString(),
-        name: userNameInput.trim(),
-        email: userEmailInput.trim(),
-        password: userPasswordInput.trim(),
-        role: userRoleInput,
-        createdAt: new Date().toISOString().split('T')[0],
-      };
-      if (onAddUser) {
-        onAddUser(newUser);
-      }
+
+      await fetchUsers();
+      setIsUserModalOpen(false);
+    } catch (err) {
+      console.error('Erro ao salvar usuário:', err);
+    } finally {
+      setIsSubmittingUser(false);
     }
-    setIsUserModalOpen(false);
   };
 
-  const handleDeleteUser = (userId: string) => {
+  const handleDeleteUser = async (userId: string) => {
     if (window.confirm('Tem certeza que deseja excluir este usuário?')) {
-      if (onDeleteUser) {
-        onDeleteUser(userId);
+      try {
+        const { error } = await supabase.from('profiles').delete().eq('id', userId);
+        if (error) {
+          console.warn('Erro ao deletar perfil do Supabase:', error);
+        }
+        setUsers((prev) => prev.filter((u) => u.id !== userId));
+        if (onDeleteUser) onDeleteUser(userId);
+      } catch (err) {
+        console.error('Erro ao excluir usuário:', err);
       }
     }
   };
@@ -870,90 +956,130 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </p>
             </div>
 
-            <button
-              id="add-new-user-btn"
-              onClick={handleOpenNewUser}
-              className="flex items-center gap-2 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer self-start sm:self-auto"
-            >
-              <UserPlus className="w-4 h-4" />
-              <span>Novo Usuário</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={fetchUsers}
+                disabled={isLoadingUsers}
+                className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center disabled:opacity-50"
+                title="Recarregar usuários do banco"
+              >
+                <RefreshCw className={`w-4 h-4 ${isLoadingUsers ? 'animate-spin text-teal-600' : ''}`} />
+              </button>
+              <button
+                id="add-new-user-btn"
+                onClick={handleOpenNewUser}
+                className="flex items-center gap-2 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer self-start sm:self-auto"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>Novo Usuário</span>
+              </button>
+            </div>
           </div>
+
+          {/* Feedback de Erro */}
+          {usersError && (
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-semibold flex items-center justify-between gap-2 animate-in fade-in">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>{usersError}</span>
+              </div>
+              <button
+                onClick={fetchUsers}
+                className="px-2.5 py-1 bg-rose-100 hover:bg-rose-200 text-rose-900 rounded font-bold text-[11px] cursor-pointer shrink-0"
+              >
+                Tentar Novamente
+              </button>
+            </div>
+          )}
 
           {/* User List Table */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px]">
-                  <tr>
-                    <th className="py-3 px-4">Usuário / Nome</th>
-                    <th className="py-3 px-4">E-mail</th>
-                    <th className="py-3 px-4">Cargo / Função</th>
-                    <th className="py-3 px-4 text-right">Ações</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                  {systemUsers.map((user) => {
-                    const getBadgeClass = (r: UserRole) => {
-                      switch (r) {
-                        case 'Administrador':
-                          return 'bg-purple-100 text-purple-800 border-purple-200';
-                        case 'Tesoureiro':
-                          return 'bg-teal-100 text-teal-800 border-teal-200';
-                        case 'Presbítero':
-                          return 'bg-blue-100 text-blue-800 border-blue-200';
-                        case 'Pastor':
-                          return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-                        default:
-                          return 'bg-slate-100 text-slate-800 border-slate-200';
-                      }
-                    };
+            {isLoadingUsers ? (
+              <div className="p-12 text-center space-y-3">
+                <Loader2 className="w-8 h-8 text-teal-600 animate-spin mx-auto" />
+                <p className="text-xs font-bold text-slate-600">Carregando usuários do Supabase...</p>
+              </div>
+            ) : users.length === 0 ? (
+              <div className="p-12 text-center space-y-2">
+                <Users className="w-10 h-10 text-slate-300 mx-auto" />
+                <p className="text-sm font-bold text-slate-700">Nenhum usuário cadastrado no Supabase</p>
+                <p className="text-xs text-slate-400">Clique em "Novo Usuário" para cadastrar um perfil.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px]">
+                    <tr>
+                      <th className="py-3 px-4">Usuário / Nome</th>
+                      <th className="py-3 px-4">E-mail</th>
+                      <th className="py-3 px-4">Cargo / Função</th>
+                      <th className="py-3 px-4 text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                    {users.map((user) => {
+                      const getBadgeClass = (r: UserRole) => {
+                        switch (r) {
+                          case 'Administrador':
+                            return 'bg-purple-100 text-purple-800 border-purple-200';
+                          case 'Tesoureiro':
+                            return 'bg-teal-100 text-teal-800 border-teal-200';
+                          case 'Presbítero':
+                            return 'bg-blue-100 text-blue-800 border-blue-200';
+                          case 'Pastor':
+                            return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+                          default:
+                            return 'bg-slate-100 text-slate-800 border-slate-200';
+                        }
+                      };
 
-                    return (
-                      <tr key={user.id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="py-3.5 px-4 font-bold text-slate-900 flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 font-black flex items-center justify-center border border-slate-200 text-xs shrink-0">
-                            {user.name.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="font-bold text-slate-900">{user.name}</p>
-                            {user.createdAt && (
-                              <p className="text-[10px] text-slate-400 font-normal">Criado em: {user.createdAt}</p>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4 text-slate-600 font-medium">
-                          {user.email}
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${getBadgeClass(user.role)}`}>
-                            {user.role}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              onClick={() => handleOpenEditUser(user)}
-                              className="p-1.5 text-slate-500 hover:text-teal-700 hover:bg-teal-50 rounded-lg transition-colors cursor-pointer"
-                              title="Editar Usuário"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteUser(user.id)}
-                              className="p-1.5 text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                              title="Excluir Usuário"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                      return (
+                        <tr key={user.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="py-3.5 px-4 font-bold text-slate-900 flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 font-black flex items-center justify-center border border-slate-200 text-xs shrink-0">
+                              {(user.name || user.email || 'U').charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="font-bold text-slate-900">{user.name || 'Sem nome'}</p>
+                              {user.createdAt && (
+                                <p className="text-[10px] text-slate-400 font-normal">Criado em: {user.createdAt}</p>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4 text-slate-600 font-medium">
+                            {user.email}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${getBadgeClass(user.role)}`}>
+                              {user.role}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => handleOpenEditUser(user)}
+                                className="p-1.5 text-slate-500 hover:text-teal-700 hover:bg-teal-50 rounded-lg transition-colors cursor-pointer"
+                                title="Editar Usuário"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteUser(user.id)}
+                                className="p-1.5 text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                title="Excluir Usuário"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1052,17 +1178,28 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <div className="pt-3 flex items-center justify-end gap-3 border-t border-slate-100">
                 <button
                   type="button"
+                  disabled={isSubmittingUser}
                   onClick={() => setIsUserModalOpen(false)}
-                  className="px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                  className="px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer disabled:opacity-50"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 rounded-xl transition-colors shadow-sm cursor-pointer flex items-center gap-1.5"
+                  disabled={isSubmittingUser}
+                  className="px-5 py-2.5 text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-60 rounded-xl transition-colors shadow-sm cursor-pointer flex items-center gap-1.5"
                 >
-                  <Check className="w-4 h-4" />
-                  <span>{editingUser ? 'Salvar Alterações' : 'Cadastrar Usuário'}</span>
+                  {isSubmittingUser ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Salvando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>{editingUser ? 'Salvar Alterações' : 'Cadastrar Usuário'}</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
