@@ -54,7 +54,7 @@ import {
   SynodeGoal,
 } from './types';
 import { supabase } from './lib/supabase';
-import { fetchTransactionsFromSupabase } from './lib/transactionsService';
+import { fetchTransactionsFromSupabase, createTransactionInSupabase, updateTransactionInSupabase } from './lib/transactionsService';
 
 const INITIAL_USERS: SystemUser[] = [
   {
@@ -319,23 +319,47 @@ export default function App() {
   const [activeReceiptTx, setActiveReceiptTx] = useState<Transaction | null>(null);
 
   // Handlers
-  const handleSaveTransaction = (savedTx: Transaction) => {
+  const handleSaveTransaction = async (savedTx: Transaction) => {
+    // 1. Verificamos se é uma Edição (já existe na tela) ou Criação Nova
+    const isEditing = transactions.some((t) => t.id === savedTx.id);
+    
+    let dbResult;
+
+    if (isEditing) {
+      // Dispara a atualização no Supabase
+      dbResult = await updateTransactionInSupabase(savedTx.id, savedTx);
+    } else {
+      // Dispara a criação no Supabase (Removemos o ID temporário gerado no front-end para usar o ID real do banco)
+      const { id, ...txWithoutId } = savedTx;
+      dbResult = await createTransactionInSupabase(txWithoutId);
+    }
+
+    // 2. Trava de segurança: Se o banco falhou, a gente avisa e não atualiza a tela enganando o usuário
+    if (dbResult.error || !dbResult.data) {
+      console.error("Erro ao salvar no banco:", dbResult.error);
+      alert("Houve um erro ao salvar a transação. Verifique sua conexão e tente novamente.");
+      return; 
+    }
+
+    // Esta é a transação final, com o ID correto e validada pelo Supabase
+    const finalTx = dbResult.data;
+
+    // 3. Sucesso! Agora sim atualizamos a tela (memória do React)
     setTransactions((prev) => {
-      const exists = prev.some((t) => t.id === savedTx.id);
-      if (exists) {
-        return prev.map((t) => (t.id === savedTx.id ? savedTx : t));
+      if (isEditing) {
+        return prev.map((t) => (t.id === finalTx.id ? finalTx : t));
       }
-      return [savedTx, ...prev];
+      return [finalTx, ...prev];
     });
 
-    // Instantly update visual update flag timestamp
+    // Atualiza o relógio de "Última atualização"
     setLastUpdated(formatCurrentDateTime(new Date()));
 
-    // Update account balance
+    // 4. Atualiza o saldo das contas no layout
     setAccounts((prev) =>
       prev.map((acc) => {
-        if (acc.name === savedTx.account) {
-          const delta = savedTx.type === 'Entrada' ? savedTx.amount : -savedTx.amount;
+        if (acc.name === finalTx.account) {
+          const delta = finalTx.type === 'Entrada' ? finalTx.amount : -finalTx.amount;
           return { ...acc, balance: acc.balance + delta };
         }
         return acc;
