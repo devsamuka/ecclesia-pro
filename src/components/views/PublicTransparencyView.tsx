@@ -235,7 +235,7 @@ export const PublicTransparencyView: React.FC<PublicTransparencyViewProps> = ({
               className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-bold transition-all shadow-md shadow-teal-600/20 flex items-center gap-1.5 cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>Voltar ao Painel do Tesoureiro</span>
+              <span>Sair</span>
             </button>
           </div>
         </div>
