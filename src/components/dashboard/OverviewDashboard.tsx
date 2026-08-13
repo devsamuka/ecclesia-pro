@@ -52,6 +52,7 @@ import { LastUpdateBadge } from '../common/LastUpdateBadge';
 interface OverviewDashboardProps {
   accounts: ChurchAccount[];
   transactions: Transaction[];
+  consolidatedBalance?: number; // Adicione esta linha
   upcomingBills: UpcomingBill[];
   superiorPayments: SuperiorPayment[];
   synodGoal: SynodeGoal;
