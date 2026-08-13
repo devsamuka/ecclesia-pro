@@ -211,7 +211,7 @@ export default function App() {
   };
 
   // Domain Data States
-  const [accounts, setAccounts] = useState<ChurchAccount[]>(INITIAL_ACCOUNTS);
+  const [accounts, setAccounts] = useState<ChurchAccount[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState<boolean>(true);
   const [lastUpdated, setLastUpdated] = useState<string>(() =>
@@ -242,10 +242,10 @@ export default function App() {
       isMounted = false;
     };
   }, []);
-  const [upcomingBills, setUpcomingBills] = useState<UpcomingBill[]>(INITIAL_UPCOMING_BILLS);
-  const [superiorPayments, setSuperiorPayments] = useState<SuperiorPayment[]>(INITIAL_SUPERIOR_PAYMENTS);
-  const [members, setMembers] = useState<Member[]>(INITIAL_MEMBERS);
-  const [budgets, setBudgets] = useState<MonthlyBudget[]>(INITIAL_BUDGETS);
+ const [upcomingBills, setUpcomingBills] = useState<UpcomingBill[]>([]);
+  const [superiorPayments, setSuperiorPayments] = useState<SuperiorPayment[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
+const [budgets, setBudgets] = useState<MonthlyBudget[]>([]);
   const [synodGoal, setSynodGoal] = useState<SynodeGoal>(INITIAL_SYNOD_GOAL);
 
   // Dynamic Category Lists State
