@@ -86,7 +86,8 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
   onOpenReceiptModal,
   searchTerm,
   selectedPeriod,
-  lastUpdated = '28/07/2026 às 16:45',
+  consolidatedBalance,
+    lastUpdated = '28/07/2026 às 16:45',
 }) => {
   const [transactionTab, setTransactionTab] = useState<
     'Tudo' | 'Dízimos/Ofertas' | 'Contas' | 'Geral'
