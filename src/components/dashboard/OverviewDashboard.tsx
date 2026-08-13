@@ -240,7 +240,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
             </div>
             <div>
               <h3 className="text-2xl font-black text-slate-900 tracking-tight">
-                {formatBRL(totalConsolidatedBalance)}
+              {formatBRL(consolidatedBalance)}
               </h3>
               <p className="text-[11px] text-slate-600 font-semibold mt-1 flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse shrink-0" />
