@@ -67,6 +67,7 @@ interface OverviewDashboardProps {
   searchTerm: string;
   selectedPeriod: string;
   lastUpdated?: string;
+  consolidatedBalance: number;
 }
 
 export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
