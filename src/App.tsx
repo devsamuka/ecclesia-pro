@@ -88,6 +88,39 @@ export default function App() {
     setUsers((prev) => prev.filter((u) => u.id !== userId));
   };
 
+  // Busca os usuários reais do Supabase
+  useEffect(() => {
+    const fetchAllUsers = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles') 
+          .select('*');
+
+        if (error) throw error;
+
+        if (data) {
+          const formattedUsers: SystemUser[] = data.map((profile: any) => ({
+            id: profile.id,
+            name: profile.name,
+            email: profile.email,
+            role: profile.role,
+            createdAt: profile.created_at ? profile.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+          }));
+          
+          setUsers(formattedUsers);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar usuários do Supabase:', err);
+      }
+    };
+
+    if (isAuthenticated) {
+      fetchAllUsers();
+    }
+  }, [isAuthenticated]);
+
+  // 👆 FIM DO CÓDIGO COLADO 👆
+
   // Navigation & View States
   const [currentTab, setCurrentTab] = useState<NavItem>('overview');
   const [isPublicTransparency, setIsPublicTransparency] = useState<boolean>(() => {
