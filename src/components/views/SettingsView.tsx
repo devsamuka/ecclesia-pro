@@ -724,7 +724,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       )}
 
-     {/* TAB: USUARIOS */}
+      {/* TAB: USUARIOS */}
       {activeTab === 'Usuarios' && activeRole === 'Administrador' && (
         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs space-y-4 relative">
           <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-slate-100 pb-3">
@@ -913,50 +913,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   </div>
                 </form>
               </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
-
-          {/* Renderização dinâmica da lista de usuários */}
-          {isLoadingUsers ? (
-            <div className="p-8 text-center text-slate-500 text-sm font-bold flex flex-col items-center gap-2">
-              <div className="w-6 h-6 border-2 border-teal-600 border-t-transparent rounded-full animate-spin"></div>
-              Carregando usuários do banco de dados...
-            </div>
-          ) : usersError ? (
-            <div className="p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-sm font-bold text-center">
-              {usersError}
-            </div>
-          ) : users.length === 0 ? (
-            <div className="p-8 text-center text-slate-500 text-sm font-bold">
-              Nenhum usuário encontrado no sistema.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-              {users.map((user) => (
-                <div key={user.id} className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 hover:border-teal-300 transition-colors rounded-xl shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-teal-600 text-white flex items-center justify-center font-black text-lg shadow-inner">
-                      {user.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="font-extrabold text-slate-900 leading-tight">{user.name}</p>
-                      <p className="text-xs font-medium text-slate-500">{user.email}</p>
-                    </div>
-                  </div>
-                  <span className={`px-3 py-1 text-xs font-black rounded-full border ${
-                    user.role === 'Administrador' 
-                      ? 'bg-rose-100 text-rose-800 border-rose-200' 
-                      : 'bg-teal-100 text-teal-800 border-teal-200'
-                  }`}>
-                    {user.role}
-                  </span>
-                </div>
-              ))}
             </div>
           )}
         </div>
