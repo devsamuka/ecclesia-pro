@@ -242,10 +242,10 @@ export default function App() {
       isMounted = false;
     };
   }, []);
- const [upcomingBills, setUpcomingBills] = useState<UpcomingBill[]>([]);
+  const [upcomingBills, setUpcomingBills] = useState<UpcomingBill[]>([]);
   const [superiorPayments, setSuperiorPayments] = useState<SuperiorPayment[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
-const [budgets, setBudgets] = useState<MonthlyBudget[]>([]);
+  const [budgets, setBudgets] = useState<MonthlyBudget[]>([]);
   const [synodGoal, setSynodGoal] = useState<SynodeGoal>(INITIAL_SYNOD_GOAL);
 
   // Dynamic Category Lists State
@@ -449,6 +449,17 @@ const [budgets, setBudgets] = useState<MonthlyBudget[]>([]);
     setSuperiorPayments((prev) => prev.filter((p) => p.id !== id));
   };
 
+  // 1. Cálculo do Saldo Consolidado Total (Todas as Entradas - Todas as Saídas)
+  const totalIncomeAllTime = transactions
+    .filter((t) => t.type === 'Entrada')
+    .reduce((acc, t) => acc + Number(t.amount || 0), 0);
+
+  const totalExpensesAllTime = transactions
+    .filter((t) => t.type === 'Saída')
+    .reduce((acc, t) => acc + Number(t.amount || 0), 0);
+
+  const consolidatedBalance = totalIncomeAllTime - totalExpensesAllTime;
+
   // Total tithes for calculations (filtered by selected month/period)
   const totalMonthlyTithes = transactions
     .filter((t) => t.category === 'Dízimo' && t.type === 'Entrada' && isDateInPeriod(t.date, selectedPeriod))
@@ -542,6 +553,7 @@ const [budgets, setBudgets] = useState<MonthlyBudget[]>([]);
               <OverviewDashboard
                 accounts={accounts}
                 transactions={transactions}
+                consolidatedBalance={consolidatedBalance} // <--- PASSEI O SALDO AQUI
                 upcomingBills={upcomingBills}
                 superiorPayments={superiorPayments}
                 synodGoal={synodGoal}
