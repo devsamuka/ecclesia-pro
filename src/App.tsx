@@ -119,8 +119,6 @@ export default function App() {
     }
   }, [isAuthenticated]);
 
-  // 👆 FIM DO CÓDIGO COLADO 👆
-
   // Navigation & View States
   const [currentTab, setCurrentTab] = useState<NavItem>('overview');
   const [isPublicTransparency, setIsPublicTransparency] = useState<boolean>(() => {
@@ -149,6 +147,7 @@ export default function App() {
       window.removeEventListener('hashchange', handleLocationChange);
     };
   }, []);
+
   const [activeRole, setActiveRole] = useState<UserRole>('Tesoureiro');
   const [treasurerName, setTreasurerName] = useState<string>('Carlos Santos');
   const [userEmail, setUserEmail] = useState<string>('tesouraria@ipb.org.br');
@@ -213,12 +212,51 @@ export default function App() {
       setIsAuthenticated(false);
     }
   };
-  const [churchName, setChurchName] = useState<string>(INITIAL_CHURCH_NAME);
-  const [churchCnpj, setChurchCnpj] = useState<string>(INITIAL_CHURCH_CNPJ);
-  const [presbyteryName, setPresbyteryName] = useState<string>(INITIAL_PRESBYTERY_NAME);
-  const [synodName, setSynodName] = useState<string>(INITIAL_SYNOD_NAME);
+
+  // ✅ CORREÇÃO: Substituindo inicializações chumbadas por 'Carregando...' ou vazias
+  const [churchName, setChurchName] = useState<string>('Carregando...');
+  const [churchCnpj, setChurchCnpj] = useState<string>('');
+  const [presbyteryName, setPresbyteryName] = useState<string>('');
+  const [synodName, setSynodName] = useState<string>('');
   const [percentualPresbiterio, setPercentualPresbiterio] = useState<number>(10);
   const [percentualSinodo, setPercentualSinodo] = useState<number>(10);
+
+  // ✅ CORREÇÃO: Busca automática global das configurações da Igreja no Supabase
+  useEffect(() => {
+    const fetchChurchSettings = async () => {
+      try {
+        // Ajuste o nome da tabela 'church_settings' caso use outro nome no seu Supabase
+        const { data, error } = await supabase
+          .from('church_settings')
+          .select('*')
+          .eq('id', 1)
+          .single();
+
+        if (data && !error) {
+          if (data.church_name) setChurchName(data.church_name);
+          if (data.church_cnpj) setChurchCnpj(data.church_cnpj);
+          if (data.presbytery_name) setPresbyteryName(data.presbytery_name);
+          if (data.synod_name) setSynodName(data.synod_name);
+          if (data.percentual_presbiterio) setPercentualPresbiterio(data.percentual_presbiterio);
+          if (data.percentual_sinodo) setPercentualSinodo(data.percentual_sinodo);
+        } else {
+          // Se houver erro ou não achar os dados, usa os Mocks como último recurso
+          setChurchName(INITIAL_CHURCH_NAME);
+          setChurchCnpj(INITIAL_CHURCH_CNPJ);
+          setPresbyteryName(INITIAL_PRESBYTERY_NAME);
+          setSynodName(INITIAL_SYNOD_NAME);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar configurações globais da igreja:', err);
+        setChurchName(INITIAL_CHURCH_NAME); // Fallback
+      }
+    };
+
+    if (isAuthenticated) {
+      fetchChurchSettings();
+    }
+  }, [isAuthenticated]);
+
   const handleUpdateProfile = (updated: { name: string; role: UserRole; avatarUrl?: string }) => {
     setTreasurerName(updated.name);
     setActiveRole(updated.role);
@@ -226,6 +264,7 @@ export default function App() {
       setUserAvatarUrl(updated.avatarUrl);
     }
   };
+
   const [accountsRelatorName, setAccountsRelatorName] = useState<string>('Presb. Antônio Ferreira');
   const [councilPresidentName, setCouncilPresidentName] = useState<string>('Pr. Ricardo Santos');
   const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);
@@ -275,6 +314,7 @@ export default function App() {
       isMounted = false;
     };
   }, []);
+
   const [upcomingBills, setUpcomingBills] = useState<UpcomingBill[]>([]);
   const [superiorPayments, setSuperiorPayments] = useState<SuperiorPayment[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -353,31 +393,25 @@ export default function App() {
 
   // Handlers
   const handleSaveTransaction = async (savedTx: Transaction) => {
-    // 1. Verificamos se é uma Edição (já existe na tela) ou Criação Nova
     const isEditing = transactions.some((t) => t.id === savedTx.id);
     
     let dbResult;
 
     if (isEditing) {
-      // Dispara a atualização no Supabase
       dbResult = await updateTransactionInSupabase(savedTx.id, savedTx);
     } else {
-      // Dispara a criação no Supabase (Removemos o ID temporário gerado no front-end para usar o ID real do banco)
       const { id, ...txWithoutId } = savedTx;
       dbResult = await createTransactionInSupabase(txWithoutId);
     }
 
-    // 2. Trava de segurança: Se o banco falhou, a gente avisa e não atualiza a tela enganando o usuário
     if (dbResult.error || !dbResult.data) {
       console.error("Erro ao salvar no banco:", dbResult.error);
       alert("Houve um erro ao salvar a transação. Verifique sua conexão e tente novamente.");
       return; 
     }
 
-    // Esta é a transação final, com o ID correto e validada pelo Supabase
     const finalTx = dbResult.data;
 
-    // 3. Sucesso! Agora sim atualizamos a tela (memória do React)
     setTransactions((prev) => {
       if (isEditing) {
         return prev.map((t) => (t.id === finalTx.id ? finalTx : t));
@@ -385,10 +419,8 @@ export default function App() {
       return [finalTx, ...prev];
     });
 
-    // Atualiza o relógio de "Última atualização"
     setLastUpdated(formatCurrentDateTime(new Date()));
 
-    // 4. Atualiza o saldo das contas no layout
     setAccounts((prev) =>
       prev.map((acc) => {
         if (acc.name === finalTx.account) {
@@ -411,7 +443,7 @@ export default function App() {
       if (exists) {
         return prev.map((b) => (b.id === savedBill.id ? savedBill : b));
       }
-      return [savedBill, ...prev];
+        return [savedBill, ...prev];
     });
   };
 
@@ -437,7 +469,6 @@ export default function App() {
     const billToPay = upcomingBills.find((b) => b.id === billId);
     if (!billToPay) return;
 
-    // Create a transaction record
     const paidTx: Transaction = {
       id: `tx-paid-${Date.now()}`,
       type: 'Saída',
@@ -454,7 +485,6 @@ export default function App() {
     setTransactions((prev) => [paidTx, ...prev]);
     setLastUpdated(formatCurrentDateTime(new Date()));
 
-    // Deduct from account balance
     setAccounts((prev) =>
       prev.map((acc) => {
         if (acc.name === billToPay.account) {
@@ -464,7 +494,6 @@ export default function App() {
       })
     );
 
-    // Remove from upcoming bills
     setUpcomingBills((prev) => prev.filter((b) => b.id !== billId));
   };
 
@@ -482,7 +511,6 @@ export default function App() {
     setSuperiorPayments((prev) => prev.filter((p) => p.id !== id));
   };
 
-  // 1. Cálculo do Saldo Consolidado Total (Todas as Entradas - Todas as Saídas)
   const totalIncomeAllTime = transactions
     .filter((t) => t.type === 'Entrada')
     .reduce((acc, t) => acc + Number(t.amount || 0), 0);
@@ -493,12 +521,10 @@ export default function App() {
 
   const consolidatedBalance = totalIncomeAllTime - totalExpensesAllTime;
 
-  // Total tithes for calculations (filtered by selected month/period)
   const totalMonthlyTithes = transactions
     .filter((t) => t.category === 'Dízimo' && t.type === 'Entrada' && isDateInPeriod(t.date, selectedPeriod))
     .reduce((sum, t) => sum + t.amount, 0);
 
-  // If Public Transparency Portal mode is enabled
   if (isPublicTransparency) {
     return (
       <PublicTransparencyView
@@ -516,7 +542,6 @@ export default function App() {
     );
   }
 
-  // System Lock: Render AuthView when not authenticated
   if (!isAuthenticated) {
     return (
       <AuthView
@@ -538,7 +563,6 @@ export default function App() {
       onCloseMobileSim={() => setIsSimulatedMobile(false)}
     >
       <div id="app-root-layout" className="flex h-screen w-full overflow-hidden bg-slate-50 text-slate-900 font-sans">
-        {/* Sidebar Navigation */}
         <Sidebar
           currentTab={currentTab}
           onTabChange={(tab) => {
@@ -553,7 +577,6 @@ export default function App() {
           onToggleMobileSim={() => setIsSimulatedMobile(!isSimulatedMobile)}
         />
 
-        {/* Main Content Area */}
         <div className="flex-1 h-full overflow-y-auto flex flex-col min-w-0 w-full">
           <Header
             onOpenMobileMenu={() => setIsMobileOpen(true)}
@@ -586,7 +609,7 @@ export default function App() {
               <OverviewDashboard
                 accounts={accounts}
                 transactions={transactions}
-                consolidatedBalance={consolidatedBalance} // <--- PASSEI O SALDO AQUI
+                consolidatedBalance={consolidatedBalance}
                 upcomingBills={upcomingBills}
                 superiorPayments={superiorPayments}
                 synodGoal={synodGoal}
@@ -766,7 +789,6 @@ export default function App() {
           </main>
         </div>
 
-        {/* Prominent Floating Action Button for Mobile Access */}
         <button
           id="floating-new-transaction-btn"
           onClick={() => {
@@ -780,7 +802,6 @@ export default function App() {
           <Plus className="w-7 h-7 stroke-[3]" />
         </button>
 
-        {/* Interactive Modals */}
         <NewTransactionModal
           isOpen={isNewTxModalOpen}
           onClose={() => {
