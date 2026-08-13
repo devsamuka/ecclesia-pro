@@ -664,7 +664,7 @@ export default function App() {
               />
             )}
 
-            {currentTab === 'presbytery' && (
+          {currentTab === 'presbytery' && (
               <PresbyterySynodView
                 superiorPayments={superiorPayments}
                 synodGoal={synodGoal}
@@ -677,6 +677,9 @@ export default function App() {
                 transactions={transactions}
                 selectedPeriod={selectedPeriod}
                 activeRole={activeRole}
+                // 👇 ESTAS DUAS LINHAS FORAM ADICIONADAS 👇
+                presbyteryName={presbyteryName}
+                synodName={synodName}
               />
             )}
 
