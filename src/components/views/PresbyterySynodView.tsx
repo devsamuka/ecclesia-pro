@@ -228,7 +228,7 @@ export const PresbyterySynodView: React.FC<PresbyterySynodViewProps> = ({
                 <div>
                   <h4 className="text-base font-extrabold text-slate-900">Presbitério</h4>
                   <p className="text-[11px] text-slate-500">
-                    PRST Central • {presbyteryPayments.length} lançamento(s)
+                    {presbyteryName || 'Nome do Presbitério não definido'}
                   </p>
                 </div>
               </div>
@@ -314,7 +314,7 @@ export const PresbyterySynodView: React.FC<PresbyterySynodViewProps> = ({
                 <div>
                   <h4 className="text-base font-extrabold text-slate-900">Sínodo</h4>
                   <p className="text-[11px] text-slate-500">
-                    Sínodo de São Paulo (SSP) • {synodPayments.length} lançamento(s)
+                   {synodName || 'Nome do Sínodo não definido'}
                   </p>
                 </div>
               </div>
