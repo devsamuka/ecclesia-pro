@@ -711,18 +711,68 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       )}
 
-      {/* TAB: PERMISSÕES */}
-      {activeTab === 'Permissoes' && (
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs space-y-4">
-          <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-teal-600" />
-            Matriz de Permissões
-          </h3>
-          <p className="text-sm text-slate-600">
-            Esta área gerencia as permissões de acesso de cada função do sistema (Tesoureiro, Administrador, Conselho).
-          </p>
-        </div>
-      )}
+     {activeTab === 'permissions' && (
+  <div className="p-6">
+    <div className="mb-6">
+      <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2 mb-2">
+        <ShieldCheck className="w-5 h-5 text-teal-600" />
+        Matriz de Permissões
+      </h3>
+      <p className="text-sm text-slate-600">
+        Esta área detalha as permissões de acesso e edição de cada perfil de usuário dentro do sistema (Administrador, Tesoureiro, Presbítero).
+      </p>
+    </div>
+
+    <div className="overflow-x-auto rounded-xl border border-slate-200">
+      <table className="w-full text-sm text-left text-slate-600 border-collapse">
+        <thead className="text-xs text-slate-700 uppercase bg-slate-100 border-b border-slate-200">
+          <tr>
+            <th className="px-6 py-4 font-bold">Módulo / Funcionalidade</th>
+            <th className="px-4 py-4 text-center font-bold text-teal-700">Administrador</th>
+            <th className="px-4 py-4 text-center font-bold text-teal-700">Tesoureiro</th>
+            <th className="px-4 py-4 text-center font-bold text-teal-700">Presbítero (Conselho)</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          <tr className="bg-white hover:bg-slate-50 transition-colors">
+            <td className="px-6 py-4 font-medium text-slate-900">Visão Geral (Dashboard)</td>
+            <td className="px-4 py-4 text-center text-teal-600 font-bold">Acesso Total</td>
+            <td className="px-4 py-4 text-center text-teal-600 font-bold">Acesso Total</td>
+            <td className="px-4 py-4 text-center text-teal-600 font-bold">Acesso Total</td>
+          </tr>
+          
+          <tr className="bg-slate-50 hover:bg-slate-100 transition-colors">
+            <td className="px-6 py-4 font-medium text-slate-900">Gestão de Lançamentos (Dízimos e Despesas)</td>
+            <td className="px-4 py-4 text-center text-teal-600 font-bold">Criar / Editar / Excluir</td>
+            <td className="px-4 py-4 text-center text-teal-600 font-bold">Criar / Editar / Excluir</td>
+            <td className="px-4 py-4 text-center text-amber-500 font-bold">Apenas Visualizar</td>
+          </tr>
+
+          <tr className="bg-white hover:bg-slate-50 transition-colors">
+            <td className="px-6 py-4 font-medium text-slate-900">Relatórios e Fechamentos</td>
+            <td className="px-4 py-4 text-center text-teal-600 font-bold">Acesso Total</td>
+            <td className="px-4 py-4 text-center text-teal-600 font-bold">Acesso Total</td>
+            <td className="px-4 py-4 text-center text-teal-600 font-bold">Acesso Total</td>
+          </tr>
+
+          <tr className="bg-slate-50 hover:bg-slate-100 transition-colors">
+            <td className="px-6 py-4 font-medium text-slate-900">Parâmetros da Igreja (Sínodo, Presbitério)</td>
+            <td className="px-4 py-4 text-center text-teal-600 font-bold">Editar</td>
+            <td className="px-4 py-4 text-center text-amber-500 font-bold">Apenas Visualizar</td>
+            <td className="px-4 py-4 text-center text-amber-500 font-bold">Apenas Visualizar</td>
+          </tr>
+
+          <tr className="bg-white hover:bg-slate-50 transition-colors">
+            <td className="px-6 py-4 font-medium text-slate-900">Gestão de Usuários do Sistema</td>
+            <td className="px-4 py-4 text-center text-teal-600 font-bold">Acesso Total</td>
+            <td className="px-4 py-4 text-center text-slate-400">Sem Acesso</td>
+            <td className="px-4 py-4 text-center text-slate-400">Sem Acesso</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+)}
 
       {/* TAB: USUARIOS */}
       {activeTab === 'Usuarios' && activeRole === 'Administrador' && (
