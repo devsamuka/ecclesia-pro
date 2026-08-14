@@ -14,7 +14,8 @@ import {
   Tag,
   Plus,
   Pencil,
-  Users
+  Users,
+  AlertCircle
 } from 'lucide-react';
 import { UserRole, SystemUser } from '../../types';
 import { supabase } from '../../lib/supabase';
@@ -277,8 +278,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setIsClearActiveConfirmOpen(false);
   };
 
+  const handleOpenUserModal = (user?: SystemUser) => {
+    if (user) {
+      setEditingUser(user);
+      setUserNameInput(user.name);
+      setUserEmailInput(user.email);
+      setUserRoleInput(user.role);
+    } else {
+      setEditingUser(null);
+      setUserNameInput('');
+      setUserEmailInput('');
+      setUserRoleInput('Tesoureiro');
+    }
+    setUserPasswordInput('');
+    setIsUserModalOpen(true);
+  };
+
   return (
-    <div className="space-y-6 pb-12 animate-in fade-in duration-300 w-full max-w-full overflow-x-hidden">
+    <div className="space-y-6 pb-12 animate-in fade-in duration-300 w-full max-w-full overflow-x-hidden relative">
       {/* Header Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-xs w-full min-w-0">
         <div className="min-w-0 flex-1">
@@ -500,7 +517,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       )}
 
-      {/* TAB: GERENCIAMENTO DE CATEGORIAS */}
+      {/* TAB 2: GERENCIAMENTO DE CATEGORIAS */}
       {activeTab === 'Categorias' && (
         <div className="space-y-6 animate-in fade-in duration-200">
           <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs space-y-4">
@@ -711,262 +728,195 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       )}
 
-     {activeTab === 'permissions' && (
-  <div className="p-6">
-    <div className="mb-6">
-      <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2 mb-2">
-        <ShieldCheck className="w-5 h-5 text-teal-600" />
-        Matriz de Permissões
-      </h3>
-      <p className="text-sm text-slate-600">
-        Esta área detalha as permissões de acesso e edição de cada perfil de usuário dentro do sistema (Administrador, Tesoureiro, Presbítero).
-      </p>
-    </div>
+      {/* TAB 3: PERMISSÕES */}
+      {activeTab === 'Permissoes' && (
+        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs space-y-4 animate-in fade-in duration-200">
+          <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+            <ShieldCheck className="w-5 h-5 text-teal-600" />
+            <h3 className="text-base font-extrabold text-slate-900">Matriz de Permissões do Sistema</h3>
+          </div>
+          <div className="text-sm text-slate-600 bg-slate-50 p-4 rounded-lg border border-slate-200">
+            <p><strong>Administrador:</strong> Acesso total ao sistema, gerencia usuários e configurações globais.</p>
+            <p className="mt-2"><strong>Tesoureiro:</strong> Acesso aos lançamentos financeiros, relatórios, e configuração de categorias.</p>
+            <p className="mt-2"><strong>Conselho:</strong> Acesso de visualização aos relatórios financeiros para fins de auditoria e acompanhamento.</p>
+          </div>
+        </div>
+      )}
 
-    <div className="overflow-x-auto rounded-xl border border-slate-200">
-      <table className="w-full text-sm text-left text-slate-600 border-collapse">
-        <thead className="text-xs text-slate-700 uppercase bg-slate-100 border-b border-slate-200">
-          <tr>
-            <th className="px-6 py-4 font-bold">Módulo / Funcionalidade</th>
-            <th className="px-4 py-4 text-center font-bold text-teal-700">Administrador</th>
-            <th className="px-4 py-4 text-center font-bold text-teal-700">Tesoureiro</th>
-            <th className="px-4 py-4 text-center font-bold text-teal-700">Presbítero (Conselho)</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">
-          <tr className="bg-white hover:bg-slate-50 transition-colors">
-            <td className="px-6 py-4 font-medium text-slate-900">Visão Geral (Dashboard)</td>
-            <td className="px-4 py-4 text-center text-teal-600 font-bold">Acesso Total</td>
-            <td className="px-4 py-4 text-center text-teal-600 font-bold">Acesso Total</td>
-            <td className="px-4 py-4 text-center text-teal-600 font-bold">Acesso Total</td>
-          </tr>
-          
-          <tr className="bg-slate-50 hover:bg-slate-100 transition-colors">
-            <td className="px-6 py-4 font-medium text-slate-900">Gestão de Lançamentos (Dízimos e Despesas)</td>
-            <td className="px-4 py-4 text-center text-teal-600 font-bold">Criar / Editar / Excluir</td>
-            <td className="px-4 py-4 text-center text-teal-600 font-bold">Criar / Editar / Excluir</td>
-            <td className="px-4 py-4 text-center text-amber-500 font-bold">Apenas Visualizar</td>
-          </tr>
-
-          <tr className="bg-white hover:bg-slate-50 transition-colors">
-            <td className="px-6 py-4 font-medium text-slate-900">Relatórios e Fechamentos</td>
-            <td className="px-4 py-4 text-center text-teal-600 font-bold">Acesso Total</td>
-            <td className="px-4 py-4 text-center text-teal-600 font-bold">Acesso Total</td>
-            <td className="px-4 py-4 text-center text-teal-600 font-bold">Acesso Total</td>
-          </tr>
-
-          <tr className="bg-slate-50 hover:bg-slate-100 transition-colors">
-            <td className="px-6 py-4 font-medium text-slate-900">Parâmetros da Igreja (Sínodo, Presbitério)</td>
-            <td className="px-4 py-4 text-center text-teal-600 font-bold">Editar</td>
-            <td className="px-4 py-4 text-center text-amber-500 font-bold">Apenas Visualizar</td>
-            <td className="px-4 py-4 text-center text-amber-500 font-bold">Apenas Visualizar</td>
-          </tr>
-
-          <tr className="bg-white hover:bg-slate-50 transition-colors">
-            <td className="px-6 py-4 font-medium text-slate-900">Gestão de Usuários do Sistema</td>
-            <td className="px-4 py-4 text-center text-teal-600 font-bold">Acesso Total</td>
-            <td className="px-4 py-4 text-center text-slate-400">Sem Acesso</td>
-            <td className="px-4 py-4 text-center text-slate-400">Sem Acesso</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-)}
-
-      {/* TAB: USUARIOS */}
+      {/* TAB 4: USUÁRIOS */}
       {activeTab === 'Usuarios' && activeRole === 'Administrador' && (
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs space-y-4 relative">
-          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-slate-100 pb-3">
-            <div>
-              <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                <Users className="w-5 h-5 text-teal-600" />
-                Gestão de Usuários
-              </h3>
-              <p className="text-xs text-slate-500 mt-1">
-                A gestão de usuários e acesso ao sistema foi movida para este painel. Os usuários carregados do Supabase estão sincronizados.
-              </p>
+        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs space-y-4 animate-in fade-in duration-200">
+          <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-teal-600" />
+              <h3 className="text-base font-extrabold text-slate-900">Gerenciar Usuários</h3>
             </div>
-            
-            {/* Botão de Adicionar Novo Usuário */}
             <button
-              onClick={() => {
-                setEditingUser(null);
-                setUserNameInput('');
-                setUserEmailInput('');
-                setUserPasswordInput('');
-                setUserRoleInput('Tesoureiro');
-                setIsUserModalOpen(true);
-              }}
-              className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg text-xs shadow-md shadow-teal-600/20 transition-all flex items-center gap-2 cursor-pointer shrink-0"
+              onClick={() => handleOpenUserModal()}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 text-white rounded-lg text-xs font-bold hover:bg-teal-700 transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Adicionar Usuário</span>
+              Novo Usuário
             </button>
           </div>
 
-          {/* Renderização dinâmica da lista de usuários */}
           {isLoadingUsers ? (
-            <div className="p-8 text-center text-slate-500 text-sm font-bold flex flex-col items-center gap-2">
-              <div className="w-6 h-6 border-2 border-teal-600 border-t-transparent rounded-full animate-spin"></div>
-              Carregando usuários do banco de dados...
-            </div>
+            <p className="text-xs text-slate-500">Carregando usuários...</p>
           ) : usersError ? (
-            <div className="p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-sm font-bold text-center">
-              {usersError}
-            </div>
-          ) : users.length === 0 ? (
-            <div className="p-8 text-center text-slate-500 text-sm font-bold">
-              Nenhum usuário encontrado no sistema.
-            </div>
+            <p className="text-xs text-rose-500">{usersError}</p>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-              {users.map((user) => (
-                <div key={user.id} className="flex flex-col justify-between p-4 bg-slate-50 border border-slate-200 hover:border-teal-300 transition-colors rounded-xl shadow-sm gap-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-teal-600 text-white flex items-center justify-center font-black text-lg shadow-inner">
-                        {user.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="font-extrabold text-slate-900 leading-tight">{user.name}</p>
-                        <p className="text-xs font-medium text-slate-500">{user.email}</p>
-                      </div>
-                    </div>
-                    <span className={`px-3 py-1 text-[10px] font-black rounded-full border ${
-                      user.role === 'Administrador' 
-                        ? 'bg-rose-100 text-rose-800 border-rose-200' 
-                        : 'bg-teal-100 text-teal-800 border-teal-200'
-                    }`}>
-                      {user.role}
-                    </span>
-                  </div>
-                  
-                  {/* Botões de Ação do Usuário (Editar/Excluir) */}
-                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200/60">
-                    <button 
-                      onClick={() => {
-                        setEditingUser(user);
-                        setUserNameInput(user.name);
-                        setUserEmailInput(user.email);
-                        setUserRoleInput(user.role);
-                        setUserPasswordInput(''); // Não mostramos a senha por segurança
-                        setIsUserModalOpen(true);
-                      }}
-                      className="px-3 py-1.5 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-100 text-slate-600 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                      <span>Editar</span>
-                    </button>
-                    <button 
-                      className="px-3 py-1.5 bg-white border border-rose-200 hover:border-rose-300 hover:bg-rose-50 text-rose-600 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
-                      onClick={() => alert(`A função de excluir o usuário ${user.name} precisa ser conectada ao Supabase!`)}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Excluir</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Modal de Criação/Edição de Usuário */}
-          {isUserModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-              <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-200">
-                <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50/50">
-                  <h3 className="font-extrabold text-slate-900 flex items-center gap-2">
-                    {editingUser ? <Pencil className="w-4 h-4 text-teal-600" /> : <Plus className="w-4 h-4 text-teal-600" />}
-                    {editingUser ? 'Editar Usuário' : 'Novo Usuário'}
-                  </h3>
-                  <button 
-                    onClick={() => setIsUserModalOpen(false)}
-                    className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-                
-                <form className="p-5 space-y-4" onSubmit={(e) => { e.preventDefault(); alert("Função de salvar precisa ser conectada!"); }}>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Nome Completo</label>
-                    <input 
-                      type="text" 
-                      required
-                      value={userNameInput}
-                      onChange={(e) => setUserNameInput(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-                      placeholder="Ex: João da Silva"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">E-mail</label>
-                    <input 
-                      type="email" 
-                      required
-                      value={userEmailInput}
-                      onChange={(e) => setUserEmailInput(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-                      placeholder="joao@igreja.com"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      {editingUser ? 'Nova Senha (deixe em branco para não alterar)' : 'Senha de Acesso'}
-                    </label>
-                    <input 
-                      type="password" 
-                      required={!editingUser}
-                      value={userPasswordInput}
-                      onChange={(e) => setUserPasswordInput(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-                      placeholder="••••••••"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Nível de Acesso (Perfil)</label>
-                    <select 
-                      value={userRoleInput}
-                      onChange={(e) => setUserRoleInput(e.target.value as UserRole)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 font-medium"
-                    >
-                      <option value="Tesoureiro">Tesoureiro (Acesso padrão)</option>
-                      <option value="Conselho">Conselho (Apenas visualização)</option>
-                      <option value="Administrador">Administrador (Acesso total)</option>
-                    </select>
-                  </div>
-
-                  <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
-                    <button 
-                      type="button"
-                      onClick={() => setIsUserModalOpen(false)}
-                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs transition-colors cursor-pointer"
-                    >
-                      Cancelar
-                    </button>
-                    <button 
-                      type="submit"
-                      disabled={isSubmittingUser}
-                      className="px-4 py-2 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white font-bold rounded-lg text-xs shadow-md shadow-teal-600/20 transition-colors flex items-center gap-2 cursor-pointer"
-                    >
-                      {isSubmittingUser ? (
-                         <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      ) : (
-                         <Save className="w-3.5 h-3.5" />
-                      )}
-                      <span>{editingUser ? 'Salvar Alterações' : 'Criar Usuário'}</span>
-                    </button>
-                  </div>
-                </form>
-              </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="p-3 font-bold text-slate-700">Nome</th>
+                    <th className="p-3 font-bold text-slate-700">E-mail</th>
+                    <th className="p-3 font-bold text-slate-700">Cargo</th>
+                    <th className="p-3 font-bold text-slate-700 text-center">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((user) => (
+                    <tr key={user.id} className="border-b border-slate-100 hover:bg-slate-50">
+                      <td className="p-3 font-medium text-slate-900">{user.name}</td>
+                      <td className="p-3 text-slate-600">{user.email}</td>
+                      <td className="p-3">
+                        <span className="px-2 py-1 rounded bg-teal-50 text-teal-700 text-[10px] font-bold">
+                          {user.role}
+                        </span>
+                      </td>
+                      <td className="p-3 flex justify-center gap-2">
+                        <button 
+                          onClick={() => handleOpenUserModal(user)}
+                          className="p-1.5 text-slate-500 hover:text-teal-600 bg-slate-100 hover:bg-teal-50 rounded transition-colors cursor-pointer"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => onDeleteUser && onDeleteUser(user.id)}
+                          className="p-1.5 text-slate-500 hover:text-rose-600 bg-slate-100 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
       )}
+
+      {/* MODAL: LIMPAR CAMPOS DE CONFIGURAÇÃO */}
+      {isClearActiveConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 animate-in zoom-in-95 duration-200">
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="w-12 h-12 bg-rose-100 rounded-full flex items-center justify-center text-rose-600">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Limpar Campos?</h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Tem certeza que deseja apagar as informações de Igreja, Presbitério e Sínodo? Esta ação não salva automaticamente, mas limpa a tela atual.
+                </p>
+              </div>
+              <div className="flex gap-3 w-full mt-4">
+                <button
+                  onClick={() => setIsClearActiveConfirmOpen(false)}
+                  className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleConfirmClearActive}
+                  className="flex-1 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                >
+                  Confirmar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CRIAR / EDITAR USUÁRIO */}
+      {isUserModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-slate-900">
+                {editingUser ? 'Editar Usuário' : 'Novo Usuário'}
+              </h3>
+              <button 
+                onClick={() => setIsUserModalOpen(false)}
+                className="text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={(e) => {
+                e.preventDefault();
+                // Simulação da chamada do onAdd/onEdit fornecido via prop
+                if(editingUser && onEditUser) {
+                  onEditUser({ ...editingUser, name: userNameInput, email: userEmailInput, role: userRoleInput });
+                } else if(onAddUser) {
+                  onAddUser({ id: String(Date.now()), name: userNameInput, email: userEmailInput, role: userRoleInput, createdAt: new Date().toISOString() });
+                }
+                setIsUserModalOpen(false);
+              }}
+              className="space-y-4 text-xs"
+            >
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Nome Completo</label>
+                <input 
+                  required type="text" value={userNameInput} onChange={(e) => setUserNameInput(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">E-mail</label>
+                <input 
+                  required type="email" value={userEmailInput} onChange={(e) => setUserEmailInput(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                />
+              </div>
+              {!editingUser && (
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Senha Provisória</label>
+                  <input 
+                    required type="password" value={userPasswordInput} onChange={(e) => setUserPasswordInput(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                  />
+                </div>
+              )}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Nível de Acesso (Cargo)</label>
+                <select 
+                  value={userRoleInput} onChange={(e) => setUserRoleInput(e.target.value as UserRole)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                >
+                  <option value="Administrador">Administrador</option>
+                  <option value="Tesoureiro">Tesoureiro</option>
+                  <option value="Conselho">Conselho (Leitura)</option>
+                </select>
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <button type="button" onClick={() => setIsUserModalOpen(false)} className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg cursor-pointer">
+                  Cancelar
+                </button>
+                <button type="submit" className="flex-1 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg cursor-pointer flex items-center justify-center gap-1.5">
+                  <Save className="w-4 h-4" /> Salvar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
