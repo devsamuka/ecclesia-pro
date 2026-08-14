@@ -28,6 +28,8 @@ interface PresbyterySynodViewProps {
   transactions?: Transaction[];
   selectedPeriod?: string;
   activeRole?: UserRole;
+  presbyteryName?: string;
+  synodName?: string;
 }
 
 export const PresbyterySynodView: React.FC<PresbyterySynodViewProps> = ({
@@ -42,6 +44,8 @@ export const PresbyterySynodView: React.FC<PresbyterySynodViewProps> = ({
   transactions,
   selectedPeriod,
   activeRole = 'Tesoureiro',
+  presbyteryName,
+  synodName,
 }) => {
   const canManageFinances = activeRole === 'Tesoureiro' || activeRole === 'Administrador';
   const [activeGuide, setActiveGuide] = useState<SuperiorPayment | null>(null);
